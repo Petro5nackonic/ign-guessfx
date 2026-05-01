@@ -15,7 +15,7 @@
   line-height: 1.45;
   font-weight: 400;
   color: var(--text);
-  background-color: #0d0d0d;
+  background-color: var(--black);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -27,24 +27,25 @@
   box-sizing: border-box;
 }
 
+html {
+  height: 100%;
+  overflow-x: hidden;
+}
+
 body {
   margin: 0;
-  min-height: 100vh;
+  min-height: 100%;
+  min-height: 100dvh;
+  background-color: var(--black);
+  overflow-x: hidden;
 }
 
 #root {
-  min-height: 100vh;
+  min-height: 100%;
+  min-height: 100dvh;
+  width: 100%;
   display: flex;
-  justify-content: center;
-  align-items: stretch;
-  padding: 16px;
-}
-
-@media (min-width: 420px) {
-  #root {
-    align-items: center;
-    padding: 24px;
-  }
+  flex-direction: column;
 }
 
 code {
@@ -54,16 +55,15 @@ code {
 }
 
 .shell {
+  flex: 1;
   width: 100%;
-  max-width: 375px;
-  min-height: min(812px, 100vh - 32px);
+  max-width: none;
+  min-height: 0;
   background: var(--black);
-  border-radius: 22px;
+  border-radius: 0;
   overflow: hidden;
   position: relative;
-  box-shadow:
-    0 28px 100px rgba(0, 0, 0, 0.65),
-    0 0 0 1px rgba(255, 255, 255, 0.05);
+  box-shadow: none;
   display: flex;
   flex-direction: column;
 }
@@ -87,7 +87,8 @@ code {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 28px 24px calc(36px + env(safe-area-inset-bottom, 0));
+  padding: calc(28px + env(safe-area-inset-top, 0px)) max(24px, env(safe-area-inset-right, 0px))
+    calc(36px + env(safe-area-inset-bottom, 0px)) max(24px, env(safe-area-inset-left, 0px));
   position: relative;
   z-index: 2;
   min-height: 0;
@@ -178,7 +179,8 @@ code {
   display: grid;
   grid-template-columns: 40px 1fr 40px;
   align-items: start;
-  padding: 12px 16px 8px;
+  padding: calc(12px + env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) 8px
+    max(16px, env(safe-area-inset-left, 0px));
   position: relative;
   z-index: 4;
 }
@@ -242,7 +244,7 @@ code {
 }
 
 .clue-accordion {
-  margin: 8px 16px 12px;
+  margin: 8px max(16px, env(safe-area-inset-right, 0px)) 12px max(16px, env(safe-area-inset-left, 0px));
   border-radius: 16px;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.06);
@@ -413,7 +415,8 @@ code {
   flex-shrink: 0;
   background: var(--sheet);
   border-radius: 16px 16px 0 0;
-  padding: 20px 20px calc(28px + env(safe-area-inset-bottom, 0));
+  padding: 20px max(20px, env(safe-area-inset-right, 0px)) calc(28px + env(safe-area-inset-bottom, 0))
+    max(20px, env(safe-area-inset-left, 0px));
   position: relative;
   z-index: 5;
   box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.45);
@@ -604,7 +607,8 @@ code {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 20px 18px calc(22px + env(safe-area-inset-bottom, 0));
+  padding: calc(20px + env(safe-area-inset-top, 0px)) max(18px, env(safe-area-inset-right, 0px))
+    calc(22px + env(safe-area-inset-bottom, 0px)) max(18px, env(safe-area-inset-left, 0px));
   background: rgba(0, 0, 0, 0.78);
   backdrop-filter: blur(10px);
 }
@@ -691,7 +695,14 @@ code {
 }
 
 .shell-complete {
-  padding: 44px 28px 52px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-height: 0;
+  padding: calc(44px + env(safe-area-inset-top, 0px)) max(28px, env(safe-area-inset-right, 0px))
+    calc(52px + env(safe-area-inset-bottom, 0px)) max(28px, env(safe-area-inset-left, 0px));
   text-align: center;
   position: relative;
   z-index: 2;
