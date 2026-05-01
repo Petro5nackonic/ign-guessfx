@@ -928,23 +928,36 @@ export function AudioGame({ onHome }: AudioGameProps) {
               Submit
             </button>
 
-            <button
-              type="button"
-              className="btn-next-clue"
-              disabled={furthestSnippetIndex >= 4 || pendingAdvance}
-              onClick={() => nextSnippet()}
-            >
-              Next Clue
-            </button>
+            {furthestSnippetIndex >= 4 ? (
+              <button
+                type="button"
+                className="btn-next-clue"
+                disabled={pendingAdvance}
+                onClick={() => giveUp()}
+              >
+                I Give Up
+              </button>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  className="btn-next-clue"
+                  disabled={pendingAdvance}
+                  onClick={() => nextSnippet()}
+                >
+                  Next Clue
+                </button>
 
-            <button
-              type="button"
-              className="link-skip-round"
-              disabled={pendingAdvance}
-              onClick={() => giveUp()}
-            >
-              Skip this round (0pts)
-            </button>
+                <button
+                  type="button"
+                  className="link-skip-round"
+                  disabled={pendingAdvance}
+                  onClick={() => giveUp()}
+                >
+                  Skip this round (0pts)
+                </button>
+              </>
+            )}
 
             {feedback && (
               <p
