@@ -10,6 +10,8 @@ export type GameRound = {
   acceptableAnswers: string[];
   displayAnswer: string;
   thumbnail: string;
+  /** Original retail / first major release year for summary UI */
+  releaseYear: number;
   snippets: RoundSnippet[];
 };
 
@@ -61,6 +63,7 @@ export const ALL_GAME_ROUNDS: GameRound[] = [
       "portal 2",
     ],
     thumbnail: steamHeader(620),
+    releaseYear: 2011,
     snippets: [
       {
         description: "GLaDOS VO glitch — diagnostic chatter sting",
@@ -104,6 +107,7 @@ export const ALL_GAME_ROUNDS: GameRound[] = [
     ],
     thumbnail:
       "https://placehold.co/460x215/1e3a5f/e8eef8?text=Zelda%3A+Ocarina+of+Time",
+    releaseYear: 1998,
     snippets: [
       {
         description: "Chest opens — dungeon loot sting",
@@ -142,6 +146,7 @@ export const ALL_GAME_ROUNDS: GameRound[] = [
     ],
     thumbnail:
       "https://placehold.co/460x215/c1121f/ffffff?text=Super+Mario+Bros.",
+    releaseYear: 1985,
     snippets: [
       {
         description: "Chip SFX sting — classic NES waveform burst",
@@ -176,6 +181,7 @@ export const ALL_GAME_ROUNDS: GameRound[] = [
       "biohazard 4",
     ],
     thumbnail: steamHeader(2050650),
+    releaseYear: 2005,
     snippets: [
       {
         description: "Game Over sting — harsh UI‑fail stab",
@@ -212,6 +218,7 @@ export const ALL_GAME_ROUNDS: GameRound[] = [
     ],
     thumbnail:
       "https://placehold.co/460x215/2f6e52/e9fff6?text=Halo+Combat+Evolved",
+    releaseYear: 2001,
     snippets: [
       {
         description: "Ambient Wonder — minimalist halo pulse bed",
@@ -243,6 +250,7 @@ export const ALL_GAME_ROUNDS: GameRound[] = [
       "Stardew",
     ],
     thumbnail: steamHeader(413150),
+    releaseYear: 2016,
     snippets: [
       {
         description: "Mine crystal bells — sparkly ore ambience",
@@ -279,6 +287,7 @@ export const ALL_GAME_ROUNDS: GameRound[] = [
     ],
     thumbnail:
       "https://placehold.co/460x215/2f4538/eefcf5?text=Metal+Gear+Solid+2",
+    releaseYear: 2001,
     snippets: [
       {
         description: "METAL GEAR! — alarm shout sting",
@@ -306,6 +315,7 @@ export const ALL_GAME_ROUNDS: GameRound[] = [
     displayAnswer: "Balatro",
     acceptableAnswers: ["Balatro", "balatro"],
     thumbnail: steamHeader(2379780),
+    releaseYear: 2024,
     snippets: [
       {
         description: "Shop UI groove — register‑belt synth chatter",
@@ -340,6 +350,7 @@ export const ALL_GAME_ROUNDS: GameRound[] = [
       "Wild Hunt",
     ],
     thumbnail: steamHeader(292030),
+    releaseYear: 2015,
     snippets: [
       {
         description: "Silver for monsters — hunt opener sting",
@@ -371,6 +382,7 @@ export const ALL_GAME_ROUNDS: GameRound[] = [
       "ELDEN RING",
     ],
     thumbnail: steamHeader(1245620),
+    releaseYear: 2022,
     snippets: [
       {
         description: "Character creation bed — muted forge ambience",
@@ -398,6 +410,7 @@ export const ALL_GAME_ROUNDS: GameRound[] = [
     displayAnswer: "Minecraft",
     acceptableAnswers: ["Minecraft", "minecraft", "MC"],
     thumbnail: "https://placehold.co/460x215/3d8526/ffffff?text=Minecraft",
+    releaseYear: 2011,
     snippets: [
       {
         description: "Door thunk cadence — wood slap resonance",

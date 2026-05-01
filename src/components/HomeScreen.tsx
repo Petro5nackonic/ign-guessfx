@@ -1,3 +1,14 @@
+function landingCalendarDate(): { iso: string; label: string } {
+  const d = new Date();
+  const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const label = d.toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+  return { iso, label };
+}
+
 type HomeScreenProps = {
   onPlay: () => void;
 };
@@ -55,6 +66,8 @@ function LandingMark() {
 }
 
 export function HomeScreen({ onPlay }: HomeScreenProps) {
+  const { iso, label } = landingCalendarDate();
+
   return (
     <div className="shell shell--landing">
       <div className="atmosphere" aria-hidden />
@@ -74,6 +87,13 @@ export function HomeScreen({ onPlay }: HomeScreenProps) {
         <button type="button" className="cta-submit landing-play" onClick={onPlay}>
           Play
         </button>
+
+        <div className="landing-puzzle-meta">
+          <time className="landing-puzzle-date" dateTime={iso}>
+            {label}
+          </time>
+          <span className="landing-puzzle-number">Puzzle #001</span>
+        </div>
       </main>
     </div>
   );

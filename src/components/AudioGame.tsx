@@ -117,6 +117,19 @@ function IconWrongGuess() {
 
 type WrongGuess = { clueIndex: number; text: string };
 
+type CompletedRoundSummary = {
+  thumbnail: string;
+  title: string;
+  releaseYear: number;
+  snippetCount: number;
+  /** Highest clue tier reached this round (1–5). */
+  cluesReached: number;
+  outcome: "correct" | "skipped";
+  roundPoints: number;
+  wrongGuesses: WrongGuess[];
+  winningGuess?: string;
+};
+
 type CorrectRevealState = {
   thumbnail: string;
   title: string;
@@ -138,6 +151,9 @@ export function AudioGame({ onHome }: AudioGameProps) {
   const [roundIndex, setRoundIndex] = useState(0);
   const [phase, setPhase] = useState<"playing" | "complete">("playing");
   const [totalScore, setTotalScore] = useState(0);
+  const [sessionRoundSummaries, setSessionRoundSummaries] = useState<
+    CompletedRoundSummary[]
+  >([]);
 
   const round = sessionRounds[roundIndex]!;
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -348,6 +364,13 @@ export function AudioGame({ onHome }: AudioGameProps) {
 
   const suggestions = useMemo(() => catalogMatches(guess), [guess]);
 
+  const sortedWrongGuessesForSummary = (wrongs: WrongGuess[]) =>
+    [...wrongs].sort((a, b) =>
+      a.clueIndex !== b.clueIndex
+        ? a.clueIndex - b.clueIndex
+        : a.text.localeCompare(b.text),
+    );
+
   const progressPct =
     audioProgress.dur > 0
       ? Math.min(100, (audioProgress.cur / audioProgress.dur) * 100)
@@ -420,9 +443,22 @@ export function AudioGame({ onHome }: AudioGameProps) {
     setPendingAdvance(true);
     setTotalScore((s) => s + scoreDelta);
     setFeedback(summary);
+
+    const snapshot: CompletedRoundSummary = {
+      thumbnail: round.thumbnail,
+      title: round.displayAnswer,
+      releaseYear: round.releaseYear,
+      snippetCount: round.snippets.length,
+      cluesReached: furthestSnippetIndex + 1,
+      outcome: "skipped",
+      roundPoints: scoreDelta,
+      wrongGuesses: wrongGuesses.map((w) => ({ ...w })),
+    };
+
     window.setTimeout(() => {
       setFeedback(null);
       setPendingAdvance(false);
+      setSessionRoundSummaries((prev) => [...prev, snapshot]);
       if (roundIndex >= sessionRounds.length - 1) {
         autoplayMainAfterSnippetSrcChangeRef.current = false;
         setPhase("complete");
@@ -452,6 +488,20 @@ export function AudioGame({ onHome }: AudioGameProps) {
       audioRef.current?.pause();
       setPendingAdvance(true);
       setTotalScore((s) => s + pts);
+      setSessionRoundSummaries((prev) => [
+        ...prev,
+        {
+          thumbnail: round.thumbnail,
+          title: round.displayAnswer,
+          releaseYear: round.releaseYear,
+          snippetCount: round.snippets.length,
+          cluesReached: furthestSnippetIndex + 1,
+          outcome: "correct",
+          roundPoints: pts,
+          wrongGuesses: wrongGuesses.map((w) => ({ ...w })),
+          winningGuess: trimmed,
+        },
+      ]);
       setCorrectReveal({
         thumbnail: round.thumbnail,
         title: round.displayAnswer,
@@ -494,6 +544,7 @@ export function AudioGame({ onHome }: AudioGameProps) {
     setIsPlaying(false);
     setCorrectReveal(null);
     stopPreviewPlayback();
+    setSessionRoundSummaries([]);
   }, [stopPreviewPlayback]);
 
   const confirmExitOverlay = useCallback(() => {
@@ -514,8 +565,82 @@ export function AudioGame({ onHome }: AudioGameProps) {
         <div className="shell-complete">
           <h2>Run complete</h2>
           <p className="score-big-complete">{fmtPts(totalScore)}</p>
-          <p className="muted">
-            Three rounds down — each run draws random classics from the pool in{" "}
+
+          <ul className="run-summary-list" aria-label="Round by round summary">
+            {sessionRoundSummaries.map((row, i) => {
+              const wrongs = sortedWrongGuessesForSummary(row.wrongGuesses);
+              return (
+                <li key={`${row.title}-${i}`} className="run-summary-row">
+                  <img
+                    className="run-summary-thumb"
+                    src={row.thumbnail}
+                    alt=""
+                  />
+                  <div className="run-summary-body">
+                    <p className="run-summary-round-kicker">Round {i + 1}</p>
+                    <p className="run-summary-title">{row.title}</p>
+                    <p className="run-summary-released">
+                      Released {row.releaseYear}
+                    </p>
+                    <div className="run-summary-detail">
+                      <p className="run-summary-line">
+                        <span
+                          className={
+                            row.outcome === "correct"
+                              ? "run-summary-pill run-summary-pill--ok"
+                              : "run-summary-pill run-summary-pill--skip"
+                          }
+                        >
+                          {row.outcome === "correct" ? "Solved" : "Skipped"}
+                        </span>
+                        <span className="run-summary-sep" aria-hidden>
+                          ·
+                        </span>
+                        <span>
+                          Clues reached: {row.cluesReached} / {row.snippetCount}
+                        </span>
+                        <span className="run-summary-sep" aria-hidden>
+                          ·
+                        </span>
+                        <span>
+                          Round score:{" "}
+                          {row.roundPoints > 0 ? "+" : ""}
+                          {fmtPts(row.roundPoints)} pts
+                        </span>
+                      </p>
+                      {row.winningGuess !== undefined && (
+                        <p className="run-summary-guess">
+                          Your guess:{" "}
+                          <em>&ldquo;{row.winningGuess}&rdquo;</em>
+                        </p>
+                      )}
+                      {wrongs.length > 0 ? (
+                        <ul className="run-summary-wrongs">
+                          {wrongs.map((w, wi) => (
+                            <li key={`${w.clueIndex}-${wi}-${w.text}`}>
+                              <span className="run-summary-wrong-clue">
+                                Clue {w.clueIndex + 1}
+                              </span>
+                              <span className="run-summary-wrong-text">
+                                &ldquo;{w.text}&rdquo;
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="run-summary-no-wrongs">
+                          No incorrect guesses this round.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+
+          <p className="muted run-summary-footnote">
+            Each run picks random titles from{" "}
             <code>src/data/rounds.ts</code>.
           </p>
           <button
@@ -535,6 +660,7 @@ export function AudioGame({ onHome }: AudioGameProps) {
               setIsPlaying(false);
               setCorrectReveal(null);
               stopPreviewPlayback();
+              setSessionRoundSummaries([]);
             }}
           >
             Play again
