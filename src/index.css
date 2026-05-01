@@ -177,7 +177,7 @@ code {
 
 .game-header {
   display: grid;
-  grid-template-columns: 40px 1fr 40px;
+  grid-template-columns: auto 1fr 40px;
   align-items: start;
   padding: calc(12px + env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) 8px
     max(16px, env(safe-area-inset-left, 0px));
@@ -217,6 +217,21 @@ code {
   height: 18px;
 }
 
+.btn-icon-glass--exit {
+  width: auto;
+  min-height: 40px;
+  padding: 0 12px 0 14px;
+  gap: 8px;
+  justify-content: flex-start;
+}
+
+.btn-icon-glass-label {
+  font-family: "Nunito Sans", sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
 .header-stats {
   text-align: center;
   padding-top: 4px;
@@ -253,6 +268,74 @@ code {
 
 .clue-tier--collapsed .accordion-row {
   padding: 14px 16px;
+}
+
+.accordion-passed-inner {
+  padding: 14px 16px;
+}
+
+.accordion-passed-row {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  width: 100%;
+}
+
+.accordion-passed-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.accordion-passed-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  font-family: "Nunito Sans", sans-serif;
+  color: var(--text);
+}
+
+.accordion-passed-progress {
+  display: flex;
+  flex-direction: row;
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.accordion-passed-progress .accordion-progress-fill {
+  transition: width 0.12s linear;
+}
+
+.accordion-passed-play {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 2px;
+  border: none;
+  background: transparent;
+  color: #fff;
+  font-family: "Nunito Sans", sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+}
+
+.accordion-passed-play:hover:not(:disabled) {
+  opacity: 0.92;
+}
+
+.accordion-passed-play:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
 }
 
 .accordion-expanded-inner {
@@ -683,6 +766,34 @@ code {
 }
 
 .correct-overlay-cta {
+  border-radius: 999px;
+}
+
+.exit-overlay {
+  z-index: 45;
+}
+
+.exit-confirm-card {
+  max-width: 320px;
+}
+
+.exit-confirm-message {
+  margin: 0 0 22px;
+  font-family: "Nunito Sans", sans-serif;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.4;
+  color: var(--text);
+}
+
+.exit-confirm-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.exit-confirm-primary {
   border-radius: 999px;
 }
 

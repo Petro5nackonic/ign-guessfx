@@ -76,6 +76,23 @@ function IconReplay() {
   );
 }
 
+function IconPlayRow() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 16" fill="currentColor" aria-hidden>
+      <path d="M0 1.5v13l12-6.5L0 1.5z" />
+    </svg>
+  );
+}
+
+function IconPauseRow() {
+  return (
+    <svg width="12" height="14" viewBox="0 0 12 18" fill="currentColor" aria-hidden>
+      <rect x="0" y="1" width="4" height="16" rx="1" />
+      <rect x="8" y="1" width="4" height="16" rx="1" />
+    </svg>
+  );
+}
+
 /** Circle-xmark style — matches Figma incorrect-guess icon (#a33). */
 function IconWrongGuess() {
   return (
@@ -124,6 +141,9 @@ export function AudioGame({ onHome }: AudioGameProps) {
 
   const round = sessionRounds[roundIndex]!;
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const previewAudioRef = useRef<HTMLAudioElement | null>(null);
+  /** After "Next clue" (footer or accordion skip), autoplay once `snippetSrc` loads. */
+  const autoplayMainAfterSnippetSrcChangeRef = useRef(false);
 
   const [furthestSnippetIndex, setFurthestSnippetIndex] = useState(0);
   const [selectedSnippetIndex, setSelectedSnippetIndex] = useState(0);
@@ -137,23 +157,80 @@ export function AudioGame({ onHome }: AudioGameProps) {
   const [correctReveal, setCorrectReveal] = useState<CorrectRevealState | null>(
     null,
   );
+  const [previewClueIndex, setPreviewClueIndex] = useState<number | null>(null);
+  const [previewProgress, setPreviewProgress] = useState({ cur: 0, dur: 0 });
+  const [previewIsPlaying, setPreviewIsPlaying] = useState(false);
+  const [exitOverlayOpen, setExitOverlayOpen] = useState(false);
 
   const snippetSrc = round.snippets[selectedSnippetIndex]!.audioSrc;
+
+  const stopPreviewPlayback = useCallback(() => {
+    const p = previewAudioRef.current;
+    if (p) {
+      p.pause();
+      p.removeAttribute("src");
+      void p.load();
+    }
+    setPreviewClueIndex(null);
+    setPreviewProgress({ cur: 0, dur: 0 });
+    setPreviewIsPlaying(false);
+  }, []);
 
   const syncAudioSrc = useCallback(() => {
     const el = audioRef.current;
     if (!el) return;
+    stopPreviewPlayback();
     el.pause();
     el.currentTime = 0;
     el.src = snippetSrc;
     void el.load();
     setAudioProgress({ cur: 0, dur: 0 });
     setIsPlaying(false);
-  }, [snippetSrc]);
+  }, [snippetSrc, stopPreviewPlayback]);
+
+  const playSnippet = useCallback(async () => {
+    stopPreviewPlayback();
+    const el = audioRef.current;
+    if (!el) return;
+    if (el.currentTime >= MAX_SNIPPET_SECONDS - 0.02) {
+      el.currentTime = 0;
+      setAudioProgress((p) => ({
+        cur: 0,
+        dur: p.dur > 0 ? p.dur : 0,
+      }));
+    }
+    try {
+      await el.play();
+    } catch {
+      setFeedback("Tap Play again to unlock audio.");
+      window.setTimeout(() => setFeedback(null), 2600);
+    }
+  }, [stopPreviewPlayback]);
 
   useEffect(() => {
     syncAudioSrc();
   }, [syncAudioSrc]);
+
+  useEffect(() => {
+    if (!autoplayMainAfterSnippetSrcChangeRef.current) return;
+    const el = audioRef.current;
+    if (!el || !snippetSrc) return;
+
+    const run = () => {
+      if (!autoplayMainAfterSnippetSrcChangeRef.current) return;
+      autoplayMainAfterSnippetSrcChangeRef.current = false;
+      void playSnippet();
+    };
+
+    if (el.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA) {
+      run();
+      return;
+    }
+
+    const onCanPlay = () => run();
+    el.addEventListener("canplay", onCanPlay, { once: true });
+    return () => el.removeEventListener("canplay", onCanPlay);
+  }, [snippetSrc, playSnippet]);
 
   useEffect(() => {
     const el = audioRef.current;
@@ -198,6 +275,48 @@ export function AudioGame({ onHome }: AudioGameProps) {
   }, [snippetSrc]);
 
   useEffect(() => {
+    const el = previewAudioRef.current;
+    if (!el) return;
+    const tick = () => {
+      if (el.currentTime >= MAX_SNIPPET_SECONDS) {
+        el.pause();
+        el.currentTime = MAX_SNIPPET_SECONDS;
+      }
+      const rawDur = Number.isFinite(el.duration) ? el.duration : 0;
+      const cappedDur =
+        rawDur > 0 ? Math.min(rawDur, MAX_SNIPPET_SECONDS) : 0;
+      setPreviewProgress({
+        cur: Math.min(el.currentTime, MAX_SNIPPET_SECONDS),
+        dur: cappedDur,
+      });
+    };
+    el.addEventListener("timeupdate", tick);
+    el.addEventListener("loadedmetadata", tick);
+    el.addEventListener("ended", tick);
+    return () => {
+      el.removeEventListener("timeupdate", tick);
+      el.removeEventListener("loadedmetadata", tick);
+      el.removeEventListener("ended", tick);
+    };
+  }, []);
+
+  useEffect(() => {
+    const el = previewAudioRef.current;
+    if (!el) return;
+    const syncPlaying = () => setPreviewIsPlaying(!el.paused);
+    el.addEventListener("play", syncPlaying);
+    el.addEventListener("playing", syncPlaying);
+    el.addEventListener("pause", syncPlaying);
+    el.addEventListener("ended", syncPlaying);
+    return () => {
+      el.removeEventListener("play", syncPlaying);
+      el.removeEventListener("playing", syncPlaying);
+      el.removeEventListener("pause", syncPlaying);
+      el.removeEventListener("ended", syncPlaying);
+    };
+  }, []);
+
+  useEffect(() => {
     setFurthestSnippetIndex(0);
     setSelectedSnippetIndex(0);
     setGuess("");
@@ -207,7 +326,25 @@ export function AudioGame({ onHome }: AudioGameProps) {
     setWrongGuesses([]);
     setIsPlaying(false);
     setCorrectReveal(null);
+    const p = previewAudioRef.current;
+    if (p) {
+      p.pause();
+      p.removeAttribute("src");
+      void p.load();
+    }
+    setPreviewClueIndex(null);
+    setPreviewProgress({ cur: 0, dur: 0 });
+    setPreviewIsPlaying(false);
   }, [roundIndex]);
+
+  useEffect(() => {
+    if (!exitOverlayOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setExitOverlayOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [exitOverlayOpen]);
 
   const suggestions = useMemo(() => catalogMatches(guess), [guess]);
 
@@ -216,18 +353,40 @@ export function AudioGame({ onHome }: AudioGameProps) {
       ? Math.min(100, (audioProgress.cur / audioProgress.dur) * 100)
       : 0;
 
-  const playSnippet = async () => {
-    const el = audioRef.current;
-    if (!el) return;
-    if (el.currentTime >= MAX_SNIPPET_SECONDS - 0.02) {
-      el.currentTime = 0;
-      setAudioProgress((p) => ({
-        cur: 0,
-        dur: p.dur > 0 ? p.dur : 0,
-      }));
+  const togglePassedCluePreview = async (idx: number) => {
+    if (pendingAdvance) return;
+    const prevEl = previewAudioRef.current;
+    const mainEl = audioRef.current;
+    if (!prevEl) return;
+    mainEl?.pause();
+
+    if (previewClueIndex === idx && previewIsPlaying) {
+      prevEl.pause();
+      return;
     }
+    if (previewClueIndex === idx && !previewIsPlaying) {
+      if (prevEl.currentTime >= MAX_SNIPPET_SECONDS - 0.02) {
+        prevEl.currentTime = 0;
+        setPreviewProgress((p) => ({ cur: 0, dur: p.dur > 0 ? p.dur : 0 }));
+      }
+      try {
+        await prevEl.play();
+      } catch {
+        setFeedback("Tap Play again to unlock audio.");
+        window.setTimeout(() => setFeedback(null), 2600);
+      }
+      return;
+    }
+
+    prevEl.pause();
+    prevEl.currentTime = 0;
+    const src = round.snippets[idx]!.audioSrc;
+    prevEl.src = src;
+    void prevEl.load();
+    setPreviewClueIndex(idx);
+    setPreviewProgress({ cur: 0, dur: 0 });
     try {
-      await el.play();
+      await prevEl.play();
     } catch {
       setFeedback("Tap Play again to unlock audio.");
       window.setTimeout(() => setFeedback(null), 2600);
@@ -250,6 +409,7 @@ export function AudioGame({ onHome }: AudioGameProps) {
 
   const nextSnippet = () => {
     if (furthestSnippetIndex >= 4) return;
+    autoplayMainAfterSnippetSrcChangeRef.current = true;
     const next = furthestSnippetIndex + 1;
     setFurthestSnippetIndex(next);
     setSelectedSnippetIndex(next);
@@ -264,6 +424,7 @@ export function AudioGame({ onHome }: AudioGameProps) {
       setFeedback(null);
       setPendingAdvance(false);
       if (roundIndex >= sessionRounds.length - 1) {
+        autoplayMainAfterSnippetSrcChangeRef.current = false;
         setPhase("complete");
       } else {
         setRoundIndex((i) => i + 1);
@@ -287,6 +448,7 @@ export function AudioGame({ onHome }: AudioGameProps) {
     const ok = matchesGuess(trimmed, round.acceptableAnswers);
     if (ok) {
       const pts = pointsForFurthestSnippet(furthestSnippetIndex);
+      stopPreviewPlayback();
       audioRef.current?.pause();
       setPendingAdvance(true);
       setTotalScore((s) => s + pts);
@@ -303,6 +465,7 @@ export function AudioGame({ onHome }: AudioGameProps) {
       ...prev,
       { clueIndex: selectedSnippetIndex, text: trimmed },
     ]);
+    setGuess("");
     setFeedback("Not quite — try again or move to the next clue.");
     window.setTimeout(() => setFeedback(null), 2400);
   };
@@ -317,14 +480,7 @@ export function AudioGame({ onHome }: AudioGameProps) {
     setOpenSuggestions(false);
   };
 
-  const restartSession = () => {
-    if (
-      !window.confirm(
-        "Shuffle new classic games and restart from round 1? Your score will reset.",
-      )
-    ) {
-      return;
-    }
+  const applyFullSessionReset = useCallback(() => {
     setSessionRounds(pickSessionRounds(ROUNDS_PER_SESSION));
     setRoundIndex(0);
     setPhase("playing");
@@ -337,7 +493,19 @@ export function AudioGame({ onHome }: AudioGameProps) {
     setWrongGuesses([]);
     setIsPlaying(false);
     setCorrectReveal(null);
-  };
+    stopPreviewPlayback();
+  }, [stopPreviewPlayback]);
+
+  const confirmExitOverlay = useCallback(() => {
+    setExitOverlayOpen(false);
+    stopPreviewPlayback();
+    audioRef.current?.pause();
+    if (onHome) {
+      onHome();
+    } else {
+      applyFullSessionReset();
+    }
+  }, [onHome, stopPreviewPlayback, applyFullSessionReset]);
 
   if (phase === "complete") {
     return (
@@ -366,6 +534,7 @@ export function AudioGame({ onHome }: AudioGameProps) {
               setWrongGuesses([]);
               setIsPlaying(false);
               setCorrectReveal(null);
+              stopPreviewPlayback();
             }}
           >
             Play again
@@ -383,6 +552,7 @@ export function AudioGame({ onHome }: AudioGameProps) {
   return (
     <div className="shell">
       <audio ref={audioRef} preload="auto" className="hidden-audio" />
+      <audio ref={previewAudioRef} preload="none" className="hidden-audio" />
 
       <div className="atmosphere" aria-hidden />
       <div className="atmosphere-vignette" aria-hidden />
@@ -391,10 +561,12 @@ export function AudioGame({ onHome }: AudioGameProps) {
         <header className="game-header">
           <button
             type="button"
-            className="btn-icon-glass"
-            aria-label="Restart session"
+            className="btn-icon-glass btn-icon-glass--exit"
+            aria-label="Exit — open confirmation"
+            aria-expanded={exitOverlayOpen}
+            aria-haspopup="dialog"
             disabled={pendingAdvance}
-            onClick={restartSession}
+            onClick={() => setExitOverlayOpen(true)}
           >
             <svg viewBox="0 0 10 17" fill="none" aria-hidden>
               <path
@@ -405,6 +577,7 @@ export function AudioGame({ onHome }: AudioGameProps) {
                 strokeLinejoin="round"
               />
             </svg>
+            <span className="btn-icon-glass-label">exit</span>
           </button>
           <div className="header-stats">
             <p className="score-line">Score: {fmtPts(totalScore)}</p>
@@ -485,6 +658,74 @@ export function AudioGame({ onHome }: AudioGameProps) {
                 );
               }
 
+              const previewingThis = previewClueIndex === idx;
+              const previewPct =
+                previewingThis && previewProgress.dur > 0
+                  ? Math.min(
+                      100,
+                      (previewProgress.cur / previewProgress.dur) * 100,
+                    )
+                  : 0;
+
+              if (passed) {
+                return (
+                  <div
+                    key={idx}
+                    className={tierClass}
+                    style={{ backgroundColor: tierBg }}
+                  >
+                    <div className="accordion-passed-inner">
+                      <div className="accordion-passed-row">
+                        <div className="accordion-passed-main">
+                          <div className="accordion-passed-head">
+                            <span className="accordion-row-label">
+                              Clue {idx + 1}
+                            </span>
+                            <span className="accordion-row-penalty">
+                              −{fmtPts(clueAdvancePenalty(idx))} pts
+                            </span>
+                          </div>
+                          <div
+                            className="accordion-passed-progress"
+                            aria-hidden
+                          >
+                            <div
+                              className="accordion-progress-fill"
+                              style={{ width: `${previewPct}%` }}
+                            />
+                            <div className="accordion-progress-rest" />
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          className="accordion-passed-play"
+                          disabled={pendingAdvance}
+                          aria-label={
+                            previewingThis && previewIsPlaying
+                              ? `Pause preview for clue ${idx + 1}`
+                              : `Play clue ${idx + 1} (preview)`
+                          }
+                          onClick={() => void togglePassedCluePreview(idx)}
+                        >
+                          {previewingThis && previewIsPlaying ? (
+                            <IconPauseRow />
+                          ) : (
+                            <IconPlayRow />
+                          )}
+                          <span>Play</span>
+                        </button>
+                      </div>
+                      {wrongHere.map((w, wi) => (
+                        <div key={`${idx}-${wi}`} className="wrong-guess-row">
+                          <IconWrongGuess />
+                          <span className="wrong-guess-text">{w.text}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              }
+
               return (
                 <div
                   key={idx}
@@ -502,11 +743,6 @@ export function AudioGame({ onHome }: AudioGameProps) {
                     }}
                   >
                     <span className="accordion-row-label">Clue {idx + 1}</span>
-                    {passed && (
-                      <span className="accordion-row-penalty">
-                        −{fmtPts(clueAdvancePenalty(idx))} pts
-                      </span>
-                    )}
                   </button>
                   {wrongHere.map((w, wi) => (
                     <div key={`${idx}-${wi}`} className="wrong-guess-row">
@@ -626,6 +862,37 @@ export function AudioGame({ onHome }: AudioGameProps) {
                 ? "See final score"
                 : `Start Round ${correctReveal.nextRoundNumber}`}
             </button>
+          </div>
+        </div>
+      )}
+
+      {exitOverlayOpen && (
+        <div
+          className="correct-overlay exit-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="exit-overlay-heading"
+        >
+          <div className="correct-overlay-card exit-confirm-card">
+            <p id="exit-overlay-heading" className="exit-confirm-message">
+              Exit round and return to home screen?
+            </p>
+            <div className="exit-confirm-actions">
+              <button
+                type="button"
+                className="cta-submit exit-confirm-primary"
+                onClick={confirmExitOverlay}
+              >
+                confirm
+              </button>
+              <button
+                type="button"
+                className="btn-next-clue"
+                onClick={() => setExitOverlayOpen(false)}
+              >
+                cancel
+              </button>
+            </div>
           </div>
         </div>
       )}
